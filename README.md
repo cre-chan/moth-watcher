@@ -39,3 +39,14 @@ python app/main.py
 
 - This is a prototype and uses a simple rule-based detector rather than a trained machine learning model.
 - For a real deployment, replace the heuristic detector and estimator with a calibrated model trained on your own video data.
+
+# How to run the unit tests
+To run the unit tests, be sure you are at watchmose directory and run the following commands
+```bash
+python -m unittest discover -s tests
+```
+The command above runs all the tests.
+```bash
+python -m unittest discover -s tests [test1] [test2]
+```
+The command above runs the specified tests.
