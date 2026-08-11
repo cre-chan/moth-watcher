@@ -17,7 +17,7 @@ class AlertSender:
     def send(self, message: str) -> None:
         # 送信先アドレスが指定されていない場合は何もしない
         if not self.to_address:
-            return
+            raise ValueError("No recipient address specified for alert email.")
 
         # EmailMessage を組み立てて件名・From/To を設定する
         msg = EmailMessage()
