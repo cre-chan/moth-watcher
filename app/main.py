@@ -27,10 +27,12 @@ def should_alert(scores: dict[str, float], config: AppConfig) -> bool:
 
 
 def run(config: Optional[AppConfig] = None) -> None:
+    # 設定をロードし、ビデオストリーム、検出器、推定器、アラート送信者を初期化
     config = config or AppConfig.load()
     stream = VideoStream(config.gopro_stream_url, config.frame_width, config.frame_height)
     detector = LarvaDetector()
     estimator = StateEstimator()
+    
     sender = AlertSender(
         smtp_host=config.smtp_host,
         smtp_port=config.smtp_port,
