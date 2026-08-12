@@ -1,9 +1,11 @@
+import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-from app.alerts import AlertSender
+from google_auth_oauthlib.flow import InstalledAppFlow
 
-import os
+from app.alerts import AlertSender, GmailAlertSender
 
 
 # AlertSender クラスの振る舞いを検証するユニットテスト
@@ -59,28 +61,26 @@ class AlertSenderTests(unittest.TestCase):
                 # SMTP クライアントが一度も生成されないことを確認
                 smtp_cls.assert_not_called()
 
-    # def test_real_send_with_gmail(self):
-    #     # Gmail の SMTP サーバーを使用して実際にメール送信を試みるテスト
-    #     # 注意: このテストは Gmail アカウントの認証情報が必要であり、環境変数から取得する
+    def test_gmail_send_uses_gmail_api_and_encodes_message(self):
+        client_secret_path = os.getenv("CLIENT_SECRET_PATH")
+        gmail_recipient = os.getenv("GMAIL_RECIPIENT")
+        token_path = os.getenv("GMAIL_TOKEN_PATH", "token.json")
 
-    #     gmail_username = os.environ.get("GMAIL_USERNAME")
-    #     gmail_password = os.environ.get("GMAIL_PASSWORD")
-    #     if not gmail_username or not gmail_password:
-    #         self.skipTest("Gmail credentials not set in environment variables")
+        if not client_secret_path or not gmail_recipient:
+            self.fail("CLIENT_SECRET_PATH and GMAIL_RECIPIENT must be set for Gmail integration tests.")
 
-    #     sender = AlertSender(
-    #         smtp_host="smtp.gmail.com",
-    #         smtp_port=587,
-    #         username=gmail_username,
-    #         password=gmail_password,
-    #         from_address=gmail_username,
-    #         to_address=gmail_username,  # 自分自身に送信
-    #     )
+        client_secret_file = Path(client_secret_path)
+        self.assertTrue(client_secret_file.exists(), "CLIENT_SECRET_PATH must point to an existing JSON file.")
 
-    #     try:
-    #         sender.send("Test email from Watchmose alert system")
-    #     except Exception as e:
-    #         self.fail(f"Failed to send email via Gmail SMTP: {e}")
+        sender = GmailAlertSender.from_client_secrets_file(
+            client_secrets_file=str(client_secret_file),
+            token_file=token_path,
+            to_address=gmail_recipient,
+            from_address=None,
+        )
+
+        result = sender.send("Emergency detected from Watchmose GmailAlertSender test.")
+        self.assertIn("id", result)
 
 if __name__ == "__main__":
     unittest.main()
