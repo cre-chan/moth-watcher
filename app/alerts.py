@@ -7,7 +7,6 @@ from email.message import EmailMessage
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -66,37 +65,9 @@ class GmailAlertSender:
         self.from_address = from_address
         self.to_address = to_address
 
-    @classmethod
-    def from_client_secrets_file(
-        cls,
-        client_secrets_file: str,
-        token_file: str,
-        to_address: str,
-        from_address: str | None = None,
-        scopes: list[str] | None = None,
-    ) -> "GmailAlertSender":
-        scopes = scopes or cls.DEFAULT_SCOPES
-        credentials: Credentials | None = None
-
-        if os.path.exists(token_file):
-            credentials = Credentials.from_authorized_user_file(token_file, scopes)
-
-        if not credentials or not credentials.valid:
-            if credentials and credentials.expired and credentials.refresh_token:
-                credentials.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file, scopes)
-                credentials = flow.run_local_server(port=0)
-
-            with open(token_file, "w", encoding="utf-8") as token:
-                token.write(credentials.to_json())
-
-        return cls(credentials=credentials, from_address=from_address, to_address=to_address)
-
     def _ensure_credentials(self) -> None:
-        if not self.credentials:
-            raise ValueError("Credentials must be provided for GmailAlertSender.")
-
+        """
+        Gmail APIの認証情報が有効であることを確認し、必要に応じてリフレッシュする。無効な場合はValueErrorをraiseする。  """
         if self.credentials.expired and self.credentials.refresh_token:
             self.credentials.refresh(Request())
 
@@ -113,7 +84,7 @@ class GmailAlertSender:
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         return {"raw": raw}
 
-    def send(self, message: str) -> dict:
+    def send(self,subject: str, message: str) -> dict:
         if not self.to_address:
             raise ValueError("No recipient address specified for Gmail alert.")
 
@@ -121,7 +92,30 @@ class GmailAlertSender:
 
         try:
             service = build("gmail", "v1", credentials=self.credentials)
-            raw_message = self._create_message("Watchmose alert", message)
+            raw_message = self._create_message(subject, message)
             return service.users().messages().send(userId="me", body=raw_message).execute()
         except HttpError as error:
             raise RuntimeError(f"Gmail API failed to send message: {error}") from error
+
+class AlertSenderFactory:
+    @staticmethod
+    def create_gmail_sender_from_token(token_file: str, to_address: str, from_address: str | None = None) -> GmailAlertSender:
+        """
+        GmailAlertSenderをトークンファイルから作成するmethod. token_fileが存在しない場合はFileNotFoundErrorをraiseする.
+        """
+        # token_fileが存在しない場合はFileNotFoundErrorをraiseする
+        if not os.path.exists(token_file):
+            raise FileNotFoundError(f"Token file '{token_file}' does not exist. Try running get_creds.py to generate it.")
+
+        # 与えられたtoken_fileからGmailの認証情報を読み込む
+        credentials = Credentials.from_authorized_user_file(token_file, GmailAlertSender.DEFAULT_SCOPES)
+
+        # 認証情報が有効ではない場合、refreshを試みる。refreshできない場合はValueErrorをraiseする
+        if not credentials or not credentials.valid:
+            if credentials and credentials.expired and credentials.refresh_token:
+                credentials.refresh(Request())
+            else:
+                raise ValueError("Invalid or expired Gmail credentials. Please re-run get_creds.py to obtain new credentials.")
+
+        # GmailAlertSenderを作成して返す
+        return GmailAlertSender(credentials=credentials, from_address=from_address, to_address=to_address)

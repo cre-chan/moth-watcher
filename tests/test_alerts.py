@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-from app.alerts import AlertSender, GmailAlertSender
+from app.alerts import AlertSender, GmailAlertSender, AlertSenderFactory
 
 
 # AlertSender クラスの振る舞いを検証するユニットテスト
@@ -62,24 +62,18 @@ class AlertSenderTests(unittest.TestCase):
                 smtp_cls.assert_not_called()
 
     def test_gmail_send_uses_gmail_api_and_encodes_message(self):
-        client_secret_path = os.getenv("CLIENT_SECRET_PATH")
         gmail_recipient = os.getenv("GMAIL_RECIPIENT")
-        token_path = os.getenv("GMAIL_TOKEN_PATH", "token.json")
+        token_path = os.getenv("GMAIL_TOKEN_PATH")
 
-        if not client_secret_path or not gmail_recipient:
-            self.fail("CLIENT_SECRET_PATH and GMAIL_RECIPIENT must be set for Gmail integration tests.")
-
-        client_secret_file = Path(client_secret_path)
-        self.assertTrue(client_secret_file.exists(), "CLIENT_SECRET_PATH must point to an existing JSON file.")
-
-        sender = GmailAlertSender.from_client_secrets_file(
-            client_secrets_file=str(client_secret_file),
+        if not token_path or not gmail_recipient:
+            self.fail("GMAIL_TOKEN_PATH and GMAIL_RECIPIENT must be set for Gmail integration tests.")
+            
+        sender = AlertSenderFactory.create_gmail_sender_from_token(
             token_file=token_path,
-            to_address=gmail_recipient,
-            from_address=None,
+            to_address=gmail_recipient
         )
 
-        result = sender.send("Emergency detected from Watchmose GmailAlertSender test.")
+        result = sender.send("[Test] Watchmoth alert","Emergency detected from Watchmose GmailAlertSender test.")
         self.assertIn("id", result)
 
 if __name__ == "__main__":
