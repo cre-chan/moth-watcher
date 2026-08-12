@@ -5,6 +5,9 @@ import numpy as np
 
 
 class LarvaDetector:
+    """
+    幼虫の検出器クラス
+    """
     def __init__(self, min_area: int = 200, blur_kernel: int = 9):
         self.min_area = min_area
         self.blur_kernel = blur_kernel

@@ -5,6 +5,9 @@ from collections import deque
 
 
 class StateEstimator:
+    """
+    幼虫の状態を推定するクラス
+    """
     def __init__(self, history_size: int = 8):
         self.history_size = history_size
         self.history: deque[dict[str, float]] = deque(maxlen=history_size)
