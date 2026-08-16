@@ -101,3 +101,8 @@ If necessary, install the dependencies by running the following command:
 ```bash
 pip install -r requirements.txt
 ```
+
+When you introduce new dependencies, please add them to requirements.txt and run the following command to update the virtual environment:
+```bash
+pip install -r requirements.txt
+```
