@@ -46,3 +46,50 @@ class LarvaDetector:
                 })
 
         return best_box, features
+
+
+class YOLOv8Detector:
+    """
+    YOLOv8を使用した検出器クラス
+    """
+    def __init__(self, model_path: str):
+        self.model_path = model_path
+
+    def detect(self, img: np.ndarray) -> dict[str, list]:
+        """
+        YOLOv8を使用して検出を行うメソッド。
+        このメソッドは入力画像から蛾の成虫を検出し、検出結果のバウンディングボックスと特徴量を返す。
+
+        args:
+            img (np.ndarray): 入力画像（BGR形式）
+        
+        returns:
+            Dictionary containing the bounding boxes and features of the detected object as follows:
+            {
+                "bbox": [(x, y, w, h), ...],    # List of bounding boxes
+                                                # when no object is detected, it will be an empty list
+                "features": [{
+                    "confidence": float,
+                    "class_id": int,
+                    "centroid_x": float,
+                    "centroid_y": float
+                }, ...]                         # List of features corresponding to each detected object
+                                                # when no object is detected, it will be an empty list
+            }           
+        """
+        pass  # Placeholder for YOLOv8 detection logic. Actual implementation will depend on the YOLOv8 library used.
+
+class DetectorFactory:
+    """
+    検出器のファクトリークラス
+    """
+    @staticmethod
+    def create_detector(detector_type: str, **kwargs) -> LarvaDetector:
+        if detector_type == "larva":
+            return LarvaDetector(**kwargs)
+        else:
+            raise ValueError(f"Unknown detector type: {detector_type}")
+
+    @staticmethod
+    def create_YOLOv8_detector(model_path: str) -> YOLOv8Detector:
+        return YOLOv8Detector(model_path)
