@@ -104,7 +104,8 @@ train_YOLOv8_model(output_root='models/ami_yolov8', run_name='full_train', epoch
 
 2. Run only `test_models.py` using the trained model:
 ```bash
-export YOLOV8_MODEL_PATH=/absolute/path/to/models/ami_yolov8/full_train/weights/best.pt .python -m unittest discover -s tests -p test_models.py
+export YOLOV8_MODEL_PATH=/absolute/path/to/models/ami_yolov8/full_train/weights/best.pt 
+python -m unittest discover -v tests -p test_models.py
 ```
 
 > Note: Currently, the warning is expected on Macbook Air
