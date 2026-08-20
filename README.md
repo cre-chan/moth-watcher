@@ -74,6 +74,8 @@ Finally, install the dependencies by running the following command:
 ```bash
 pip install -r requirements.txt
 ```
+## How to get ami dataset
+The AMI dataset is available at [https://zenodo.org/records/12554005](https://zenodo.org/records/12554005). You can download the dataset and unzip it to `data/ami_dataset/`.
 
 ## How to run the unit tests
 To run the unit tests, be sure you are at watchmose directory and run the following commands
