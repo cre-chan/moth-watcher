@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
+import sys
 
 
 class LarvaDetector:
@@ -54,6 +55,22 @@ class YOLOv8Detector:
     """
     def __init__(self, model_path: str):
         self.model_path = model_path
+        self._model = None
+
+    def _load_model(self):
+        if self._model is not None:
+            return self._model
+        try:
+            from ultralytics import YOLO
+        except ImportError as exc:
+            python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+            raise RuntimeError(
+                "ultralytics is required for YOLOv8 detection. "
+                f"Current Python version is {python_version}. "
+                "This project installs ultralytics only on Python < 3.13."
+            ) from exc
+        self._model = YOLO(self.model_path)
+        return self._model
 
     def detect(self, img: np.ndarray) -> dict[str, list]:
         """
@@ -77,11 +94,60 @@ class YOLOv8Detector:
                                                 # when no object is detected, it will be an empty list
             }           
         """
-        pass  # Placeholder for YOLOv8 detection logic. Actual implementation will depend on the YOLOv8 library used.
+        if img is None:
+            raise ValueError("img must not be None")
+        if not isinstance(img, np.ndarray):
+            raise TypeError(f"img must be np.ndarray. got: {type(img)}")
+
+        model = self._load_model()
+        # 既存のストリームはグレースケールを返すため、推論前にBGRへ揃える
+        if img.ndim == 2:
+            infer_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        elif img.ndim == 3:
+            infer_img = img
+        else:
+            raise ValueError(f"Unexpected image shape: {img.shape}")
+
+        prediction = model.predict(source=infer_img, verbose=False)
+        if not prediction:
+            return {"bbox": [], "features": []}
+
+        boxes = prediction[0].boxes
+        if boxes is None or boxes.xyxy is None:
+            return {"bbox": [], "features": []}
+
+        bboxes: list[tuple[int, int, int, int]] = []
+        features: list[dict[str, float | int]] = []
+
+        xyxy_values = boxes.xyxy.cpu().numpy()
+        conf_values = boxes.conf.cpu().numpy() if boxes.conf is not None else []
+        cls_values = boxes.cls.cpu().numpy() if boxes.cls is not None else []
+
+        for idx, xyxy in enumerate(xyxy_values):
+            x1, y1, x2, y2 = [float(v) for v in xyxy]
+            x = int(round(x1))
+            y = int(round(y1))
+            w = int(round(max(0.0, x2 - x1)))
+            h = int(round(max(0.0, y2 - y1)))
+
+            bboxes.append((x, y, w, h))
+            confidence = float(conf_values[idx]) if len(conf_values) > idx else 0.0
+            class_id = int(cls_values[idx]) if len(cls_values) > idx else 0
+            features.append(
+                {
+                    "confidence": confidence,
+                    "class_id": class_id,
+                    "centroid_x": float(x + w / 2.0),
+                    "centroid_y": float(y + h / 2.0),
+                }
+            )
+
+        return {"bbox": bboxes, "features": features}
 
 class DetectorFactory:
     """
     検出器のファクトリークラス
+    2026/08/20: yolov8の検出器だけ実装しました。
     """
     @staticmethod
     def create_detector(detector_type: str, **kwargs) -> LarvaDetector:
@@ -92,4 +158,14 @@ class DetectorFactory:
 
     @staticmethod
     def create_YOLOv8_detector(model_path: str) -> YOLOv8Detector:
+        """
+        *.pt形式ファイルのパスを指定してYOLOv8の検出器を作成する。
+        """
+        return YOLOv8Detector(model_path)
+
+    @staticmethod
+    def create_yolov8_detector(model_path: str) -> YOLOv8Detector:
+        """ 
+        create_yolov8_detectorはcreate_YOLOv8_detectorのエイリアスです。
+        """
         return YOLOv8Detector(model_path)

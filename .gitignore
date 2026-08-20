@@ -4,4 +4,7 @@ client_secret*.json
 token.json
 data/ami_dataset/
 *.zip
-.venv/
+.venv*/
+prepared_dataset/
+py311*
+yolov8n.pt

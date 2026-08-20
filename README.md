@@ -86,6 +86,29 @@ python -m unittest discover -s tests [test1] [test2]
 ```
 The command above runs the specified tests.
 
+## How to run full YOLOv8 training on AMI dataset
+`train_YOLOv8_model()` is implemented in [helper/models.py](/Users/duoxu/Desktop/watchmose/helper/models.py) and trains a 1-class detector (`moth`) from `data/ami_dataset/ami_traps/camera_trap_images`.
+
+> Note: Use Python 3.11 virtual environment for training (ultralytics/torch dependency).
+
+1. Run full training:
+```bash
+python helper/models.py
+```
+The command runs the training with the following parameters:
+```
+train_YOLOv8_model(output_root='models/ami_yolov8', run_name='full_train', epochs=100, imgsz=640, batch=16, val_ratio=0.2, random_seed=42);
+```
+
+2. Run only `test_models.py` using the trained model:
+```bash
+export YOLOV8_MODEL_PATH=/absolute/path/to/models/ami_yolov8/full_train/weights/best.pt .python -m unittest discover -s tests -p test_models.py
+```
+
+> Note: Currently, the warning is expected on Macbook Air
+> [W NNPACK.cpp:64] Could not initialize NNPACK! Reason: Unsupported hardware.
+>..
+
 # Instructions for AI
 For AI developers, you must run all your commands in a virtual environment. You can create a virtual environment by running the following command:
 ```bash
