@@ -6,27 +6,34 @@ import numpy as np
 
 
 class VideoStream:
-    def __init__(self, stream_url: str, width: int, height: int):
-        self.stream_url = stream_url
+    def __init__(self, device_index: int, width: int = 0, height: int = 0):
+        self.device_index = device_index
         self.width = width
         self.height = height
-        self.cap = cv2.VideoCapture(stream_url)
+        self.cap: cv2.VideoCapture | None = cv2.VideoCapture(device_index)
+        if self.cap is None:
+            raise RuntimeError(f"Unable to open camera device: {device_index}")
 
     def start(self) -> None:
-        if not self.cap.isOpened():
-            raise RuntimeError(f"Unable to open stream: {self.stream_url}")
+        if self.cap is None or not self.cap.isOpened():
+            raise RuntimeError(f"Unable to open camera device: {self.device_index}")
 
-    def read_frame(self) -> np.ndarray | None:
+    def read_frame(self) -> np.ndarray:
+        if self.cap is None:
+            raise RuntimeError(f"Camera device is closed: {self.device_index}")
+
         ok, frame = self.cap.read()
         if not ok or frame is None:
-            return None
-        resized = cv2.resize(frame, (self.width, self.height))
-        gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-        return gray
+            raise RuntimeError(f"Unable to read from camera device: {self.device_index}")
+
+        if self.width > 0 and self.height > 0:
+            frame = cv2.resize(frame, (self.width, self.height))
+        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     def close(self) -> None:
         if self.cap is not None:
             self.cap.release()
+            self.cap = None
 
 class DebugVideoStream:
     """
@@ -64,9 +71,9 @@ class DebugVideoStream:
 
 class VideoStreamFactory:
     @staticmethod
-    def create_from_device(device_index: int, width: int, height: int) -> VideoStream:
-        None
+    def create_from_device(device_index: int, width: int = 0, height: int = 0) -> VideoStream:
+        return VideoStream(device_index, width, height)
 
     @staticmethod
     def create_from_url(stream_url: str, width: int, height: int) -> VideoStream:
-        None
+        raise NotImplementedError("URL video streams are not supported")

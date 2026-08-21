@@ -1,6 +1,6 @@
 # Watchmose
 
-Watchmose is a Dev Container based prototype that monitors moth larvae from a GoPro video stream and estimates three probabilities:
+Watchmose is a prototype that monitors moth larvae from a USB-connected GoPro or camera and estimates three probabilities:
 
 - molting probability
 - pupation probability
@@ -14,8 +14,8 @@ In this section, we will show how to run the watchmoth program.
 
 - Docker 
     - you can download Docker from [here](https://www.docker.com/products/docker-desktop)
-- A GoPro stream that is reachable from the container
-    - Currently, we assume the GoPro is connected to the computer with HDMI
+- A GoPro or camera connected to the host computer via USB
+    - The device must be recognized by the operating system as a webcam. For a GoPro, enable USB Webcam mode; USB storage mode cannot provide video frames.
 - Internet access for sending email alerts
 - Python 3.13.5 final
     - you can download Python from [here](https://www.python.org/downloads/)
@@ -54,9 +54,21 @@ export GMAIL_RECIPIENT=<recipient_email_address>
 
 ## Run
 
+Select the camera with its OpenCV device index. The default is `0`:
+
+```bash
+export CAMERA_DEVICE_INDEX=0
+export FRAME_WIDTH=640
+export FRAME_HEIGHT=480
+```
+
+Run Watchmose directly on the host computer so it can access the USB camera:
+
 ```bash
 python app/main.py
 ```
+
+RTSP/HTTP streams and passing USB cameras through to a Docker container are not currently supported.
 
 # Development (For humans)
 For development, we recommend using a virtual environment. You can create a virtual environment by running the following command:

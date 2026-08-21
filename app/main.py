@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from capture import VideoStream
+from capture import VideoStreamFactory
 from config import AppConfig
 from detection import LarvaDetector
 from inference import StateEstimator
@@ -29,7 +29,11 @@ def should_alert(scores: dict[str, float], config: AppConfig) -> bool:
 def run(config: Optional[AppConfig] = None) -> None:
     # 設定をロードし、ビデオストリーム、検出器、推定器、アラート送信者を初期化
     config = config or AppConfig.load()
-    stream = VideoStream(config.gopro_stream_url, config.frame_width, config.frame_height)
+    stream = VideoStreamFactory.create_from_device(
+        config.camera_device_index,
+        config.frame_width,
+        config.frame_height,
+    )
     detector = LarvaDetector()
     estimator = StateEstimator()
     
