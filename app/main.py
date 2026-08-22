@@ -6,7 +6,7 @@ from typing import Optional
 from capture import VideoStream
 from config import AppConfig
 from detection import LarvaDetector
-from inference import StateEstimator
+from monitoring import StateEstimator
 from alerts import AlertSender
 
 
