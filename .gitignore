@@ -8,3 +8,7 @@ data/ami_dataset/
 prepared_dataset/
 py311*
 yolov8n.pt
+.codex-request/
+.codex-result/
+.codex-venv/
+*.py[cod]
