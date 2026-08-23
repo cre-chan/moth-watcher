@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from capture import VideoStream
+from capture import VideoStreamFactory
 from config import AppConfig
 from detection import DetectorFactory, YOLOv8Detector
 from monitoring import StateEstimator
@@ -28,7 +28,9 @@ def should_alert(scores: dict[str, float], config: AppConfig) -> bool:
 class App:
     def __init__(self, config: Optional[AppConfig] = None):
         self.config = config or AppConfig.load()
-        self.stream = VideoStream(self.config.gopro_stream_url, self.config.frame_width, self.config.frame_height)
+        self.stream = VideoStreamFactory.create_from_device(
+            self.config.camera_device_index
+        )
         self.detector: YOLOv8Detector = DetectorFactory.create_YOLOv8_detector(
             self.config.yolov8_model_path
             )

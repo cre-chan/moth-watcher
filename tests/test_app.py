@@ -7,9 +7,7 @@ from app.main import App
 
 def make_config():
     return SimpleNamespace(
-        gopro_stream_url="rtsp://camera/live",
-        frame_width=640,
-        frame_height=480,
+        camera_device_index=2,
         yolov8_model_path="model.pt",
         gmail_token_file="token.json",
         alert_recipient_email="recipient@example.com",
@@ -26,7 +24,7 @@ class TestApp(unittest.TestCase):
     @patch("app.main.AlertSenderFactory.create_gmail_sender_from_token")
     @patch("app.main.DetectorFactory.create_YOLOv8_detector")
     @patch("app.main.StateEstimator")
-    @patch("app.main.VideoStream")
+    @patch("app.main.VideoStreamFactory.create_from_device")
     def test_init_creates_dependencies_from_config(
         self, video_stream, state_estimator, create_detector, create_sender
     ):
@@ -37,7 +35,7 @@ class TestApp(unittest.TestCase):
 
         app = App(config)
 
-        video_stream.assert_called_once_with("rtsp://camera/live", 640, 480)
+        video_stream.assert_called_once_with(2)
         create_detector.assert_called_once_with("model.pt")
         state_estimator.assert_called_once_with()
         create_sender.assert_called_once_with(
@@ -51,7 +49,7 @@ class TestApp(unittest.TestCase):
 
     @patch("app.main.AlertSenderFactory.create_gmail_sender_from_token")
     @patch("app.main.DetectorFactory.create_YOLOv8_detector")
-    @patch("app.main.VideoStream")
+    @patch("app.main.VideoStreamFactory.create_from_device")
     @patch("app.main.time.sleep", side_effect=KeyboardInterrupt)
     def test_run_processes_frame_and_closes_stream(
         self, sleep, video_stream, create_detector, create_sender
@@ -88,7 +86,7 @@ class TestApp(unittest.TestCase):
 
     @patch("app.main.AlertSenderFactory.create_gmail_sender_from_token")
     @patch("app.main.DetectorFactory.create_YOLOv8_detector")
-    @patch("app.main.VideoStream")
+    @patch("app.main.VideoStreamFactory.create_from_device")
     @patch("app.main.time.sleep", side_effect=KeyboardInterrupt)
     def test_run_retries_and_closes_when_frame_is_unavailable(
         self, sleep, video_stream, create_detector, create_sender
