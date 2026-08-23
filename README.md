@@ -8,6 +8,9 @@ Watchmose is a prototype that monitors moth larvae from a USB-connected GoPro or
 
 When the estimated probability exceeds the configured threshold, the system sends an email alert.
 
+<!-- This note is intentionally documentation-only for the automated Issue-to-PR demo. -->
+> **Automation demo:** This repository can use the `agent-ready` label to select issues for automated Draft PR creation.
+
 # Quickstart
 In this section, we will show how to run the watchmoth program.
 ## Prerequisites
