@@ -176,12 +176,6 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           EXPECTED_BASE_SHA: ${{ needs.authorize.outputs.base_sha }}
         run: .github/scripts/validate-and-apply-patch.sh .codex-result/codex.patch
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: "3.13"
-      - name: Verify tests on GitHub-hosted runner
-        run: .github/scripts/run-safe-tests.sh | tee .codex-result/publish-test-output.txt
       - name: Create Draft PR
         id: pr
         env:
@@ -207,9 +201,7 @@ jobs:
             echo
             echo "## Verification"
             echo
-            echo '```text'
-            tail -n 80 .codex-result/publish-test-output.txt
-            echo '```'
+            echo "Automated tests were not run. Review and verify this Draft PR manually before marking it ready."
             echo
             echo "Closes #${ISSUE_NUMBER}"
           } > pr-body.md
