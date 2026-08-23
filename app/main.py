@@ -5,9 +5,9 @@ from typing import Optional
 
 from capture import VideoStream
 from config import AppConfig
-from detection import LarvaDetector
+from detection import DetectorFactory, YOLOv8Detector
 from monitoring import StateEstimator
-from alerts import AlertSender
+from alerts import AlertSenderFactory, GmailAlertSender
 
 
 def format_state(scores: dict[str, float]) -> str:
@@ -25,49 +25,49 @@ def should_alert(scores: dict[str, float], config: AppConfig) -> bool:
         or scores["hunger_probability"] >= config.hunger_threshold
     )
 
+class App:
+    def __init__(self, config: Optional[AppConfig] = None):
+        self.config = config or AppConfig.load()
+        self.stream = VideoStream(self.config.gopro_stream_url, self.config.frame_width, self.config.frame_height)
+        self.detector: YOLOv8Detector = DetectorFactory.create_YOLOv8_detector(
+            self.config.yolov8_model_path
+            )
+        self.estimator = StateEstimator()
+        self.sender: GmailAlertSender = AlertSenderFactory.create_gmail_sender_from_token(
+            self.config.gmail_token_file,
+            self.config.alert_recipient_email,
+            self.config.alert_sender_email,
+        )
+        self.last_alert_at: Optional[float] = None
 
-def run(config: Optional[AppConfig] = None) -> None:
-    # 設定をロードし、ビデオストリーム、検出器、推定器、アラート送信者を初期化
-    config = config or AppConfig.load()
-    stream = VideoStream(config.gopro_stream_url, config.frame_width, config.frame_height)
-    detector = LarvaDetector()
-    estimator = StateEstimator()
-    
-    sender = AlertSender(
-        smtp_host=config.smtp_host,
-        smtp_port=config.smtp_port,
-        username=config.smtp_username,
-        password=config.smtp_password,
-        from_address=config.smtp_from,
-        to_address=config.smtp_to,
-    )
+    def run(self) -> None:
+        self.stream.start()
+        try:
+            while True:
+                frame = self.stream.read_frame()
+                if frame is None:
+                    time.sleep(1.0)
+                    continue
 
-    stream.start()
-    last_alert_at: Optional[float] = None
-    try:
-        while True:
-            frame = stream.read_frame()
-            if frame is None:
-                time.sleep(1.0)
-                continue
+                _, features = self.detector.detect(frame)
+                scores = self.estimator.update(features)
+                print(f"State: {format_state(scores)}")
 
-            _, features = detector.detect(frame)
-            scores = estimator.update(features)
-            print(f"State: {format_state(scores)}")
+                if should_alert(scores, self.config):
+                    now = time.time()
+                    if self.last_alert_at is None or now - self.last_alert_at >= self.config.alert_cooldown_seconds:
+                        self.sender.send(
+                            f"Emergency detected. {format_state(scores)}"
+                        )
+                        print("Alert sent")
+                        self.last_alert_at = now
 
-            if should_alert(scores, config):
-                now = time.time()
-                if last_alert_at is None or now - last_alert_at >= config.alert_cooldown_seconds:
-                    sender.send(
-                        f"Emergency detected. {format_state(scores)}"
-                    )
-                    print("Alert sent")
-                    last_alert_at = now
+                time.sleep(self.config.sample_interval_seconds)
+        finally:
+            self.stream.close()
 
-            time.sleep(config.sample_interval_seconds)
-    finally:
-        stream.close()
 
 
 if __name__ == "__main__":
-    run()
+    app = App()
+    app.run()
