@@ -1,0 +1,33 @@
+name: Codex automation
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  issue:
+    if: >-
+      true &&
+      (github.event_name == 'issues' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request == null))
+    uses: cre-chan/workflow/.github/workflows/reusable-codex-issue.lock.yml@99bbdb4461bb0e0e5e1498ce7b7eb95382221bbe
+
+  pr-feedback:
+    if: >-
+      true &&
+      (github.event_name == 'pull_request_review' ||
+      github.event_name == 'pull_request_review_comment' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null)
+      )
+    uses: cre-chan/workflow/.github/workflows/reusable-codex-pr-feedback.lock.yml@99bbdb4461bb0e0e5e1498ce7b7eb95382221bbe
