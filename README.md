@@ -1,12 +1,6 @@
 # Watchmose
 
-Watchmose is a prototype that monitors moth larvae from a USB-connected GoPro or camera and estimates three probabilities:
-
-- molting probability
-- pupation probability
-- hunger probability
-
-When the estimated probability exceeds the configured threshold, the system sends an email alert.
+Watchmose is a prototype that detects moths from a USB-connected GoPro or camera and sends an email alert. Moth emergence detection is not implemented yet.
 
 # Quickstart
 In this section, we will show how to run the watchmoth program.
@@ -42,7 +36,7 @@ pip install -r requirements.txt
 Befor you run the program, you need to grant the application access to your Google account. You can do this by running the following command in your terminal:
 
 ```bash
-python helpers/get_creds.py <path_to_client_secret.json>
+python helper/get_creds.py <path_to_client_secret.json>
 ```
 
 Then, add the following environment variables to your system:
@@ -50,6 +44,7 @@ Then, add the following environment variables to your system:
 ```bash
 export GMAIL_TOKEN_PATH=<path_to_token.json>
 export GMAIL_RECIPIENT=<recipient_email_address>
+export GMAIL_SENDER=<sender_email_address> # optional
 ```
 
 ## Run
@@ -60,12 +55,14 @@ Select the camera with its OpenCV device index. The default is `0`:
 export CAMERA_DEVICE_INDEX=0
 export FRAME_WIDTH=640
 export FRAME_HEIGHT=480
+export YOLOV8_MODEL_PATH=models/ami_yolov8/full_train/weights/best.pt
+export ALERT_COOLDOWN_SECONDS=600
 ```
 
 Run Watchmose directly on the host computer so it can access the USB camera:
 
 ```bash
-python app/main.py
+python -m app.main
 ```
 
 RTSP/HTTP streams and passing USB cameras through to a Docker container are not currently supported.
@@ -95,10 +92,19 @@ To run the unit tests, be sure you are at watchmose directory and run the follow
 python -m unittest discover -s tests
 ```
 The command above runs all the tests.
+
+To run each test file separately:
+
 ```bash
-python -m unittest discover -s tests [test1] [test2]
+python -m unittest discover -v tests -p 'test_alerts.py'
+python -m unittest discover -v tests -p 'test_app.py'
+python -m unittest discover -v tests -p 'test_capture.py'
+python -m unittest discover -v tests -p 'test_config.py'
+python -m unittest discover -v tests -p 'test_monitoring.py'
+python -m unittest discover -v tests -p 'test_models.py'
 ```
-The command above runs the specified tests.
+
+Set `GMAIL_RECIPIENT` and `GMAIL_TOKEN_PATH` before running tests that require the Gmail configuration. `test_models.py` also requires `YOLOV8_MODEL_PATH` to point to a trained model, as described below.
 
 ## How to run full YOLOv8 training on AMI dataset
 `train_YOLOv8_model()` is implemented in [helper/models.py](/Users/duoxu/Desktop/watchmose/helper/models.py) and trains a 1-class detector (`moth`) from `data/ami_dataset/ami_traps/camera_trap_images`.
