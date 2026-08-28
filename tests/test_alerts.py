@@ -1,9 +1,5 @@
-import os
 import unittest
-from pathlib import Path
-from unittest.mock import patch
-
-from google_auth_oauthlib.flow import InstalledAppFlow
+from unittest.mock import Mock, patch
 
 from app.alerts import AlertSender, GmailAlertSender, AlertSenderFactory
 
@@ -61,20 +57,20 @@ class AlertSenderTests(unittest.TestCase):
                 # SMTP クライアントが一度も生成されないことを確認
                 smtp_cls.assert_not_called()
 
-    def test_gmail_send_uses_gmail_api_and_encodes_message(self):
-        gmail_recipient = os.getenv("GMAIL_RECIPIENT")
-        token_path = os.getenv("GMAIL_TOKEN_PATH")
+    @patch("app.alerts.build")
+    def test_gmail_send_uses_gmail_api_and_encodes_message(self, build):
+        # 単体テストでは認証情報とGmail APIをモックし、外部通信を行わない。
+        credentials = Mock(valid=True, expired=False)
+        sender = GmailAlertSender(credentials, None, "recipient@example.com")
+        execute = build.return_value.users.return_value.messages.return_value.send.return_value.execute
+        execute.return_value = {"id": "message-id"}
 
-        if not token_path or not gmail_recipient:
-            self.fail("GMAIL_TOKEN_PATH and GMAIL_RECIPIENT must be set for Gmail integration tests.")
-            
-        sender = AlertSenderFactory.create_gmail_sender_from_token(
-            token_file=token_path,
-            to_address=gmail_recipient
-        )
+        result = sender.send("Moth detected", "Detection details")
 
-        result = sender.send("[Test] Watchmoth alert","Emergency detected from Watchmose GmailAlertSender test.")
-        self.assertIn("id", result)
+        self.assertEqual(result, {"id": "message-id"})
+        send = build.return_value.users.return_value.messages.return_value.send
+        send.assert_called_once()
+        self.assertEqual(send.call_args.kwargs["userId"], "me")
 
 if __name__ == "__main__":
     unittest.main()
