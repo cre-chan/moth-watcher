@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import os
 import smtplib
+import time
 from email.message import EmailMessage
 
 from google.auth.transport.requests import Request
@@ -60,10 +61,13 @@ class GmailAlertSender:
         credentials: Credentials,
         from_address: str | None,
         to_address: str,
+        cooldown_seconds: float = 0,
     ):
         self.credentials = credentials
         self.from_address = from_address
         self.to_address = to_address
+        self.cooldown_seconds = cooldown_seconds
+        self.last_sent_at: float | None = None
 
     def _ensure_credentials(self) -> None:
         """
@@ -84,22 +88,37 @@ class GmailAlertSender:
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         return {"raw": raw}
 
-    def send(self,subject: str, message: str) -> dict:
+    def send(self,subject: str, message: str) -> dict | None:
         if not self.to_address:
             raise ValueError("No recipient address specified for Gmail alert.")
+
+        now = time.monotonic()
+        # 通知モジュール内で、短時間に発生した重複メールを抑制する。
+        if (
+            self.last_sent_at is not None
+            and now - self.last_sent_at < self.cooldown_seconds
+        ):
+            return None
 
         self._ensure_credentials()
 
         try:
             service = build("gmail", "v1", credentials=self.credentials)
             raw_message = self._create_message(subject, message)
-            return service.users().messages().send(userId="me", body=raw_message).execute()
+            response = service.users().messages().send(userId="me", body=raw_message).execute()
+            self.last_sent_at = now
+            return response
         except HttpError as error:
             raise RuntimeError(f"Gmail API failed to send message: {error}") from error
 
 class AlertSenderFactory:
     @staticmethod
-    def create_gmail_sender_from_token(token_file: str, to_address: str, from_address: str | None = None) -> GmailAlertSender:
+    def create_gmail_sender_from_token(
+        token_file: str,
+        to_address: str,
+        from_address: str | None = None,
+        cooldown_seconds: float = 0,
+    ) -> GmailAlertSender:
         """
         GmailAlertSenderをトークンファイルから作成するmethod. token_fileが存在しない場合はFileNotFoundErrorをraiseする.
         """
@@ -118,4 +137,9 @@ class AlertSenderFactory:
                 raise ValueError("Invalid or expired Gmail credentials. Please re-run get_creds.py to obtain new credentials.")
 
         # GmailAlertSenderを作成して返す
-        return GmailAlertSender(credentials=credentials, from_address=from_address, to_address=to_address)
+        return GmailAlertSender(
+            credentials=credentials,
+            from_address=from_address,
+            to_address=to_address,
+            cooldown_seconds=cooldown_seconds,
+        )

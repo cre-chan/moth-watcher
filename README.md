@@ -1,6 +1,6 @@
 # Watchmose
 
-Watchmose is a prototype that detects moths from a USB-connected GoPro or camera and sends an email alert. Moth emergence detection is not implemented yet.
+Watchmose is a prototype that detects moths from a USB-connected GoPro or camera. It treats an increase in the median detected moth count over a sliding time window as an emergence event and sends an email alert.
 
 # Quickstart
 In this section, we will show how to run the watchmoth program.
@@ -57,6 +57,8 @@ export FRAME_WIDTH=640
 export FRAME_HEIGHT=480
 export YOLOV8_MODEL_PATH=models/ami_yolov8/full_train/weights/best.pt
 export ALERT_COOLDOWN_SECONDS=600
+export TARGET_FPS=30
+export DETECTION_WINDOW_SECONDS=1.0
 ```
 
 Run Watchmose directly on the host computer so it can access the USB camera:
@@ -66,6 +68,10 @@ python -m app.main
 ```
 
 RTSP/HTTP streams and passing USB cameras through to a Docker container are not currently supported.
+
+Watchmose uses a time-based sliding window rather than a fixed number of frames. The first complete window establishes the comparison baseline and does not emit an event. Each later median increase of at least one emits one emergence event; decreases update the comparison baseline without sending an alert. An increase of two or more moths is still represented by one event.
+
+> TODO: Decide how failed camera reads and YOLO inference failures affect the window. Ground-truth labeling, false-positive and missed-event measurements, detection-latency measurements, acceptance thresholds, and evaluation in the rearing environment are also future work.
 
 # Development (For humans)
 For development, we recommend using a virtual environment. You can create a virtual environment by running the following command:
