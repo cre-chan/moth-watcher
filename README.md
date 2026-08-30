@@ -2,6 +2,13 @@
 
 Watchmose is a prototype that detects moths from a USB-connected GoPro or camera. It treats an increase in the median detected moth count over a sliding time window as an emergence event and sends an email alert.
 
+<!-- This note is intentionally documentation-only for the automated Issue-to-PR demo. -->
+> **Automation demo:** This repository can use the `agent-ready` label to select issues for automated Draft PR creation.
+
+The automation is event-driven: only issues that already have `agent-ready` when
+they are opened by a repository writer are eligible. The self-hosted runner code
+and its setup guide are maintained separately from this application repository.
+
 # Quickstart
 In this section, we will show how to run the watchmoth program.
 ## Prerequisites

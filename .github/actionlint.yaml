@@ -1,0 +1,6 @@
+self-hosted-runner:
+  labels:
+    - moth-watcher-codex
+
+config-variables:
+  - CODEX_APP_ID
