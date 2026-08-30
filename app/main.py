@@ -7,10 +7,10 @@ from app.alerts import AlertSenderFactory, GmailAlertSender
 from app.capture import VideoStreamFactory
 from app.config import AppConfig
 from app.detection import DetectorFactory, YOLOv8Detector
-from app.monitoring import StateEstimator
+from app.monitoring import EmergenceEvent, StateEstimator
 
 
-ALERT_SUBJECT = "Watchmose moth detected"
+ALERT_SUBJECT = "Watchmose emergence detected"
 
 
 def format_detections(result: dict[str, list]) -> str:
@@ -44,40 +44,49 @@ class App:
         self.detector: YOLOv8Detector = DetectorFactory.create_YOLOv8_detector(
             self.config.yolov8_model_path
             )
-        self.estimator = StateEstimator()
+        self.estimator = StateEstimator(self.config.detection_window_seconds)
         self.sender: GmailAlertSender = AlertSenderFactory.create_gmail_sender_from_token(
             self.config.gmail_token_file,
             self.config.alert_recipient_email,
             self.config.alert_sender_email,
+            self.config.alert_cooldown_seconds,
         )
-        self.last_alert_at: Optional[float] = None
+
+    def _send_emergence_alert(
+        self,
+        event: EmergenceEvent,
+        detection_message: str,
+    ) -> None:
+        body = (
+            f"Moth count increased from {event.previous_count:g} "
+            f"to {event.current_count:g}.\n"
+            f"Detected at: {event.detected_at:.3f}\n\n"
+            f"{detection_message}"
+        )
+        if self.sender.send(ALERT_SUBJECT, body) is not None:
+            print("Alert sent")
 
     def run(self) -> None:
         self.stream.start()
+        frame_interval = 1.0 / self.config.target_fps
         try:
             while True:
+                loop_started_at = time.monotonic()
                 frame = self.stream.read_frame()
                 if frame is None:
                     time.sleep(1.0)
                     continue
 
                 result = self.detector.detect(frame)
-                # 羽化判定の将来実装に向け、検出結果全体を推定器へ渡す。
-                self.estimator.update(result)
                 message = format_detections(result)
+                event = self.estimator.update(result, observed_at=time.time())
                 print(message)
 
-                if result["bbox"]:
-                    now = time.time()
-                    if self.last_alert_at is None or now - self.last_alert_at >= self.config.alert_cooldown_seconds:
-                        self.sender.send(
-                            ALERT_SUBJECT,
-                            f"Moth detection only; emergence is not determined.\n\n{message}",
-                        )
-                        print("Alert sent")
-                        self.last_alert_at = now
+                if event is not None:
+                    self._send_emergence_alert(event, message)
 
-                time.sleep(self.config.sample_interval_seconds)
+                elapsed = time.monotonic() - loop_started_at
+                time.sleep(max(0.0, frame_interval - elapsed))
         finally:
             self.stream.close()
 
